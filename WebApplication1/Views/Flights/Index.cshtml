@@ -1,0 +1,55 @@
+﻿@model WebApplication1.Models.FlightIndexViewModel
+@{
+    ViewData["Title"] = "Flight Schedule";
+}
+
+<div class="container mt-4">
+    <h1 class="text-center mb-4">Flight Schedule</h1>
+    <div class="row">
+        <div class="col-md-6">
+            <h4 class="text-primary">Departures</h4>
+            @foreach (var flight in Model.Departures)
+            {
+                <div class="card mb-3 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">@flight.FlightNumber - @flight.Airline</h5>
+                        <p class="card-text">
+                            <strong>To:</strong> @flight.ArrivalAirport?.Name <br />
+                            <strong>Departure:</strong> @flight.DepartureTime.ToString("g") <br />
+                            <strong>Aircraft:</strong> @flight.Aircraft?.Model <br />
+                            <strong>Status:</strong> @flight.Status
+                        </p>
+                        <div>
+                            <a asp-action="Edit" asp-route-id="@flight.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                            <a asp-action="Details" asp-route-id="@flight.Id" class="btn btn-sm btn-outline-secondary">Details</a>
+                            <a asp-action="Delete" asp-route-id="@flight.Id" class="btn btn-sm btn-outline-danger">Delete</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="col-md-6">
+            <h4 class="text-success">Arrivals</h4>
+            @foreach (var flight in Model.Arrivals)
+            {
+                <div class="card mb-3 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">@flight.FlightNumber - @flight.Airline</h5>
+                        <p class="card-text">
+                            <strong>From:</strong> @flight.DepartureAirport?.Name <br />
+                            <strong>Arrival:</strong> @flight.ArrivalTime.ToString("g") <br />
+                            <strong>Aircraft:</strong> @flight.Aircraft?.Model <br />
+                            <strong>Status:</strong> @flight.Status
+                        </p>
+                        <div>
+                            <a asp-action="Edit" asp-route-id="@flight.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                            <a asp-action="Details" asp-route-id="@flight.Id" class="btn btn-sm btn-outline-secondary">Details</a>
+                            <a asp-action="Delete" asp-route-id="@flight.Id" class="btn btn-sm btn-outline-danger">Delete</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
