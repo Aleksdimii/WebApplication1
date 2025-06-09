@@ -5,6 +5,8 @@
     public string RegistrationNumber { get; set; }
     public int Capacity { get; set; }
     public string Manufacturer { get; set; }
+    public FlightType? Type { get; set; }
+
 
     public virtual ICollection<Flight>? Flights { get; set; }
 }

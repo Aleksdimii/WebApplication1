@@ -53,7 +53,7 @@ namespace WebApplication1.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Model,RegistrationNumber,Capacity,Manufacturer")] Aircraft aircraft)
+        public async Task<IActionResult> Create([Bind("Id,Model,RegistrationNumber,Capacity,Manufacturer,Type")] Aircraft aircraft)
         {
             if (ModelState.IsValid)
             {
@@ -85,7 +85,7 @@ namespace WebApplication1.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Model,RegistrationNumber,Capacity,Manufacturer")] Aircraft aircraft)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Model,RegistrationNumber,Capacity,Manufacturer,Type")] Aircraft aircraft)
         {
             if (id != aircraft.Id)
             {

@@ -46,6 +46,16 @@
                 <span asp-validation-for="Status" class="text-danger"></span>
             </div>
             <div class="form-group">
+                <label asp-for="Type" class="control-label"></label>
+                <input asp-for="Type" class="form-control" />
+                <span asp-validation-for="Type" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="AirlineLogoUrl" class="control-label"></label>
+                <input asp-for="AirlineLogoUrl" class="form-control" />
+                <span asp-validation-for="AirlineLogoUrl" class="text-danger"></span>
+            </div>
+            <div class="form-group">
                 <label asp-for="AircraftId" class="control-label"></label>
                 <select asp-for="AircraftId" class ="form-control" asp-items="ViewBag.AircraftId"></select>
             </div>

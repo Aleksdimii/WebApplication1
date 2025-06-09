@@ -16,6 +16,11 @@
 
     public string Status { get; set; }
 
+    public FlightType? Type { get; set; }
+
+    public string? AirlineLogoUrl { get; set; }
+
+
     public int AircraftId { get; set; }
     public virtual Aircraft? Aircraft { get; set; }
 

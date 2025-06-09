@@ -19,6 +19,18 @@ namespace WebApplication1.Controllers
             _context = context;
         }
 
+        private string GetAirlineLogo(string airline, string logoUrl)
+        {
+            if (!string.IsNullOrEmpty(logoUrl))
+                return logoUrl;
+
+            if (string.IsNullOrEmpty(airline))
+                return "/images/default-plane.png";
+
+            var formatted = airline.ToLower().Replace(" ", "-");
+            return $"https://content.airhex.com/content/logos/airlines_{formatted}_200_200_s.png?api_key=0579a42ff493048836027c9418184119";
+        }
+
         // GET: Flights
         public async Task<IActionResult> Index()
         {
@@ -40,6 +52,11 @@ namespace WebApplication1.Controllers
                 .OrderBy(f => f.ArrivalTime)
                 .ToListAsync();
 
+            foreach (var flight in departures.Concat(arrivals))
+            {
+                flight.AirlineLogoUrl = GetAirlineLogo(flight.Airline, flight.AirlineLogoUrl);
+            }
+
             var viewModel = new FlightIndexViewModel
             {
                 Departures = departures,
@@ -48,6 +65,9 @@ namespace WebApplication1.Controllers
 
             return View(viewModel);
         }
+
+
+
 
         // GET: Flights/Details/5
         public async Task<IActionResult> Details(int? id)
@@ -70,8 +90,9 @@ namespace WebApplication1.Controllers
             return View(flight);
         }
 
-        // GET: Flights/Create
-        public IActionResult Create()
+
+    // GET: Flights/Create
+    public IActionResult Create()
         {
             ViewData["AircraftId"] = new SelectList(_context.Aircrafts, "Id", "Id");
             ViewData["ArrivalAirportId"] = new SelectList(_context.Airports, "Id", "Id");
@@ -84,7 +105,7 @@ namespace WebApplication1.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,FlightNumber,Airline,DepartureAirportId,ArrivalAirportId,DepartureTime,ArrivalTime,Status,AircraftId")] Flight flight)
+        public async Task<IActionResult> Create([Bind("Id,FlightNumber,Airline,DepartureAirportId,ArrivalAirportId,DepartureTime,ArrivalTime,Status,Type,AirlineLogoUrl,AircraftId")] Flight flight)
         {
             if (ModelState.IsValid)
             {
@@ -122,7 +143,7 @@ namespace WebApplication1.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,FlightNumber,Airline,DepartureAirportId,ArrivalAirportId,DepartureTime,ArrivalTime,Status,AircraftId")] Flight flight)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,FlightNumber,Airline,DepartureAirportId,ArrivalAirportId,DepartureTime,ArrivalTime,Status,Type,AirlineLogoUrl,AircraftId")] Flight flight)
         {
             if (id != flight.Id)
             {

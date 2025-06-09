@@ -1,55 +1,109 @@
 ﻿@model WebApplication1.Models.FlightIndexViewModel
+
 @{
     ViewData["Title"] = "Flight Schedule";
 }
 
-<div class="container mt-4">
-    <h1 class="text-center mb-4">Flight Schedule</h1>
-    <div class="row">
-        <div class="col-md-6">
-            <h4 class="text-primary">Departures</h4>
-            @foreach (var flight in Model.Departures)
-            {
-                <div class="card mb-3 shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title">@flight.FlightNumber - @flight.Airline</h5>
-                        <p class="card-text">
-                            <strong>To:</strong> @flight.ArrivalAirport?.Name <br />
-                            <strong>Departure:</strong> @flight.DepartureTime.ToString("g") <br />
-                            <strong>Aircraft:</strong> @flight.Aircraft?.Model <br />
-                            <strong>Status:</strong> @flight.Status
-                        </p>
-                        <div>
-                            <a asp-action="Edit" asp-route-id="@flight.Id" class="btn btn-sm btn-outline-primary">Edit</a>
-                            <a asp-action="Details" asp-route-id="@flight.Id" class="btn btn-sm btn-outline-secondary">Details</a>
-                            <a asp-action="Delete" asp-route-id="@flight.Id" class="btn btn-sm btn-outline-danger">Delete</a>
-                        </div>
-                    </div>
-                </div>
-            }
-        </div>
+@functions {
+    public string GetAirlineLogo(string airline, string logoUrl)
+    {
+        if (!string.IsNullOrEmpty(logoUrl))
+        {
+            return logoUrl;
+        }
 
-        <div class="col-md-6">
-            <h4 class="text-success">Arrivals</h4>
-            @foreach (var flight in Model.Arrivals)
-            {
-                <div class="card mb-3 shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title">@flight.FlightNumber - @flight.Airline</h5>
-                        <p class="card-text">
-                            <strong>From:</strong> @flight.DepartureAirport?.Name <br />
-                            <strong>Arrival:</strong> @flight.ArrivalTime.ToString("g") <br />
-                            <strong>Aircraft:</strong> @flight.Aircraft?.Model <br />
-                            <strong>Status:</strong> @flight.Status
-                        </p>
-                        <div>
-                            <a asp-action="Edit" asp-route-id="@flight.Id" class="btn btn-sm btn-outline-primary">Edit</a>
-                            <a asp-action="Details" asp-route-id="@flight.Id" class="btn btn-sm btn-outline-secondary">Details</a>
-                            <a asp-action="Delete" asp-route-id="@flight.Id" class="btn btn-sm btn-outline-danger">Delete</a>
-                        </div>
-                    </div>
-                </div>
-            }
-        </div>
+        if (string.IsNullOrEmpty(airline))
+        {
+            return "/images/default-plane.png";
+        }
+
+        var formatted = airline.ToLower().Replace(" ", "-");
+        return $"https://content.airhex.com/content/logos/airlines_{formatted}_200_200_s.png?api_key=0579a42ff493048836027c94181849";
+    }
+}
+
+<h1 class="text-center my-4">Airport Flight Schedule</h1>
+
+<div class="text-center mb-4">
+    <a class="btn btn-primary" asp-action="Create">+ Add New Flight</a>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <h3 class="text-center text-uppercase">Departures</h3>
+        <table class="table table-bordered table-hover table-striped">
+            <thead class="table-dark text-center">
+                <tr>
+                    <th>Airline Logo</th>
+                    <th>Flight</th>
+                    <th>Airline</th>
+                    <th>To</th>
+                    <th>Departs</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Departures)
+                {
+                    <tr>
+                        <td>
+                            <img src="@GetAirlineLogo(item.Airline, item.AirlineLogoUrl)" alt="Logo" style="height: 30px;" onerror="this.src='/images/default-plane.png'" />
+                        </td>
+                        <td>@item.FlightNumber</td>
+                        <td>@item.Airline</td>
+                        <td>@item.ArrivalAirport?.Name</td>
+                        <td>@item.DepartureTime.ToShortTimeString()</td>
+                        <td>@item.Type</td>
+                        <td>@item.Status</td>
+                        <td>
+                            <a asp-action="Edit" asp-route-id="@item.Id">✏️</a>
+                            <a asp-action="Details" asp-route-id="@item.Id">🔍</a>
+                            <a asp-action="Delete" asp-route-id="@item.Id">🗑️</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="col-md-6">
+        <h3 class="text-center text-uppercase">Arrivals</h3>
+        <table class="table table-bordered table-hover table-striped">
+            <thead class="table-dark text-center">
+                <tr>
+                    <th>Airline Logo</th>
+                    <th>Flight</th>
+                    <th>Airline</th>
+                    <th>From</th>
+                    <th>Arrives</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Arrivals)
+                {
+                    <tr>
+                        <td>
+                            <img src="@GetAirlineLogo(item.Airline, item.AirlineLogoUrl)" alt="Logo" style="height: 30px;" onerror="this.src='/images/default-plane.png'" />
+                        </td>
+                        <td>@item.FlightNumber</td>
+                        <td>@item.Airline</td>
+                        <td>@item.DepartureAirport?.Name</td>
+                        <td>@item.ArrivalTime.ToShortTimeString()</td>
+                        <td>@item.Type</td>
+                        <td>@item.Status</td>
+                        <td>
+                            <a asp-action="Edit" asp-route-id="@item.Id">✏️</a>
+                            <a asp-action="Details" asp-route-id="@item.Id">🔍</a>
+                            <a asp-action="Delete" asp-route-id="@item.Id">🗑️</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
 </div>
