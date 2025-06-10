@@ -14,6 +14,8 @@
     public DateTime DepartureTime { get; set; }
     public DateTime ArrivalTime { get; set; }
 
+    public virtual ICollection<Airport>? Stopovers { get; set; }
+
     public string Status { get; set; }
 
     public FlightType? Type { get; set; }

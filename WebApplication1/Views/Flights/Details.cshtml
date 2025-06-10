@@ -7,6 +7,12 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
+<style>
+    .plane {
+        filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.3));
+    }
+</style>
+
 <div class="container py-4">
     <h1 class="mb-4 text-center">Flight Details</h1>
 
@@ -21,13 +27,15 @@
                     <strong>Aircraft ID:</strong> @Model.Aircraft?.Id
                 </div>
                 <div class="col-md-6">
-                    <strong>Departure Airport:</strong> @Model.DepartureAirport?.Name <br />
-                    <strong>Arrival Airport:</strong> @Model.ArrivalAirport?.Name <br />
+                    <strong>Departure Airport:</strong> @Model.DepartureAirport?.Name (@Model.DepartureAirport?.Name) <br />
+                    <strong>Arrival Airport:</strong> @Model.ArrivalAirport?.Name (@Model.ArrivalAirport?.Name) <br />
                     <strong>Departure Time:</strong> @Model.DepartureTime.ToString("g") <br />
                     <strong>Arrival Time:</strong> @Model.ArrivalTime.ToString("g") <br />
-                    <strong>Logo:</strong><br />
                     @if (!string.IsNullOrEmpty(Model.AirlineLogoUrl))
                     {
+                        <strong>Logo:</strong>
+
+                        <br />
                         <img src="@Model.AirlineLogoUrl" alt="Airline Logo" style="max-height: 50px;" />
                     }
                 </div>
@@ -46,31 +54,106 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const depLat = @ViewBag.DepartureLat ?? "null";
-    const depLng = @ViewBag.DepartureLng ?? "null";
-    const arrLat = @ViewBag.ArrivalLat ?? "null";
-    const arrLng = @ViewBag.ArrivalLng ?? "null";
+    function toRad(deg) {
+        return deg * Math.PI / 180;
+    }
 
-    if (depLat && depLng && arrLat && arrLng) {
-        const map = L.map('map').setView([(depLat + arrLat) / 2, (depLng + arrLng) / 2], 3);
+    function toDeg(rad) {
+        return rad * 180 / Math.PI;
+    }
+
+    function interpolateGreatCircle(start, end, numPoints) {
+        const lat1 = toRad(start[0]);
+        const lon1 = toRad(start[1]);
+        const lat2 = toRad(end[0]);
+        const lon2 = toRad(end[1]);
+
+        const d = 2 * Math.asin(Math.sqrt(Math.sin((lat2 - lat1) / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin((lon2 - lon1) / 2) ** 2));
+        const points = [];
+
+        for (let i = 0; i <= numPoints; i++) {
+            const f = i / numPoints;
+            const A = Math.sin((1 - f) * d) / Math.sin(d);
+            const B = Math.sin(f * d) / Math.sin(d);
+
+            const x = A * Math.cos(lat1) * Math.cos(lon1) + B * Math.cos(lat2) * Math.cos(lon2);
+            const y = A * Math.cos(lat1) * Math.sin(lon1) + B * Math.cos(lat2) * Math.sin(lon2);
+            const z = A * Math.sin(lat1) + B * Math.sin(lat2);
+
+            const lat = Math.atan2(z, Math.sqrt(x * x + y * y));
+            const lon = Math.atan2(y, x);
+
+            points.push([toDeg(lat), toDeg(lon)]);
+        }
+
+        return points;
+    }
+
+    const dep = { lat: parseFloat('@ViewBag.DepartureLat'), lng: parseFloat('@ViewBag.DepartureLng'), iata: '@ViewBag.DepartureIATA' };
+    const arr = { lat: parseFloat('@ViewBag.ArrivalLat'), lng: parseFloat('@ViewBag.ArrivalLng'), iata: '@ViewBag.ArrivalIATA' };
+    const stopovers = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.Stopovers ?? new List<object>()));
+
+    const routePoints = [dep, ...stopovers, arr];
+
+    if (routePoints.every(p => !isNaN(p.lat) && !isNaN(p.lng))) {
+        const map = L.map('map').setView([dep.lat, dep.lng], 3);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 18,
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        const depMarker = L.marker([depLat, depLng]).addTo(map).bindPopup("Departure");
-        const arrMarker = L.marker([arrLat, arrLng]).addTo(map).bindPopup("Arrival");
+        const planeIcon = L.icon({
+            iconUrl: '/downloads/Plane.png',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+            className: 'plane'
+        });
 
-        const route = L.polyline([[depLat, depLng], [arrLat, arrLng]], {
+        const markers = [];
+        routePoints.forEach((point, i) => {
+            const marker = L.marker([point.lat, point.lng]).addTo(map)
+                .bindPopup(`<strong>${i === 0 ? 'Departure' : (i === routePoints.length - 1 ? 'Arrival' : 'Stopover')}</strong>: ${point.iata}`)
+                .on('click', function () { map.setView(this.getLatLng(), 6); });
+            markers.push(marker);
+        });
+
+        const pathPoints = [];
+        for (let i = 0; i < routePoints.length - 1; i++) {
+            const segment = interpolateGreatCircle(
+                [routePoints[i].lat, routePoints[i].lng],
+                [routePoints[i + 1].lat, routePoints[i + 1].lng],
+                100
+            );
+            pathPoints.push(...segment);
+        }
+
+        const routeLine = L.polyline(pathPoints, {
             color: 'blue',
-            weight: 4,
+            weight: 3,
             opacity: 0.7,
             smoothFactor: 1
         }).addTo(map);
 
-        map.fitBounds(route.getBounds());
+        const planeMarker = L.marker([dep.lat, dep.lng], { icon: planeIcon }).addTo(map);
+
+        let step = 0;
+        const maxStep = pathPoints.length - 1;
+
+        function animatePlane() {
+            planeMarker.setLatLng(pathPoints[step]);
+            step = (step + 1) % maxStep;
+            requestAnimationFrame(animatePlane);
+        }
+
+        animatePlane();
+
+        const bounds = L.latLngBounds(pathPoints);
+        map.fitBounds(bounds.pad(0.5));
+
     } else {
-        document.getElementById("map").innerHTML = "<p class='text-danger text-center pt-5'>Unable to load map. Coordinates missing.</p>";
+        document.getElementById("map").innerHTML =
+            "<p class='text-danger text-center pt-5'>Unable to load map. Coordinates missing.</p>";
     }
 </script>
+

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -28,13 +29,13 @@ namespace WebApplication1.Controllers
                 return "/images/default-plane.png";
 
             var formatted = airline.ToLower().Replace(" ", "-");
-            return $"https://content.airhex.com/content/logos/airlines_{formatted}_200_200_s.png?api_key=0579a42ff493048836027c94181849";
+            return $"https://content.airhex.com/content/logos/airlines_{formatted}_200_200_s.png?api_key=0579a42ff493048836027c9418184119";
         }
 
         private async Task<(double lat, double lng)?> GetCoordinatesAsync(string locationName)
         {
             using var httpClient = new HttpClient();
-            var apiKey = "20d6ac341a904822972ac260da5ab7";
+            var apiKey = "20d6ac341a904822972ac260da5abcb7";
             var url = $"https://api.opencagedata.com/geocode/v1/json?q={Uri.EscapeDataString(locationName)}&key={apiKey}&limit=1";
 
             var response = await httpClient.GetAsync(url);
@@ -117,6 +118,63 @@ namespace WebApplication1.Controllers
             ViewBag.DepartureLng = departureCoords?.lng;
             ViewBag.ArrivalLat = arrivalCoords?.lat;
             ViewBag.ArrivalLng = arrivalCoords?.lng;
+            ViewBag.DepartureIATA = flight.DepartureAirport?.Name;
+            ViewBag.ArrivalIATA = flight.ArrivalAirport?.Name;
+
+            var fligh = _context.Flights
+                    .Include(f => f.DepartureAirport)
+                    .Include(f => f.ArrivalAirport)
+                    .Include(f => f.Stopovers)
+                    .Include(f => f.Aircraft)
+                    .FirstOrDefault(f => f.Id == id);
+
+            if (flight == null)
+            {
+                return NotFound();
+            }
+
+            var routePoints = new List<object>();
+
+            if (flight.DepartureAirport != null)
+            {
+                routePoints.Add(new
+                {
+                    Nm = flight.DepartureAirport.Name,
+                    Country = flight.DepartureAirport.Country,
+                    City = flight.DepartureAirport.City
+                });
+            }
+
+            if (flight.Stopovers != null && flight.Stopovers.Any())
+            {
+                foreach (var stopover in fligh.Stopovers)
+                {
+                    routePoints.Add(new
+                    {
+                        Name = stopover.Name,
+                        Country = stopover.Country,
+                        City = stopover.City
+                    });
+                }
+            }
+
+            if (flight.ArrivalAirport != null)
+            {
+                routePoints.Add(new
+                {
+                    Name = flight.ArrivalAirport.Name,
+                    Country = flight.ArrivalAirport.Country,
+                    City = flight.ArrivalAirport.City
+                });
+            }
+
+            ViewBag.Stopovers = flight.Stopovers?.Select(s => new
+            {
+                name = s.Name,
+                country = s.Country
+            }).ToList(); new List<object>();
+
+            ViewBag.RoutePointsJson = JsonSerializer.Serialize(routePoints);
 
             return View(flight);
         }
