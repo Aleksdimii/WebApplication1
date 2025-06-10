@@ -1,4 +1,4 @@
-﻿@model WebApplication1.Models.FlightIndexViewModel
+﻿@model FlightIndexViewModel
 
 @{
     ViewData["Title"] = "Flight Schedule";
@@ -18,11 +18,27 @@
         }
 
         var formatted = airline.ToLower().Replace(" ", "-");
-        return $"https://content.airhex.com/content/logos/airlines_{formatted}_200_200_s.png?api_key=0579a42ff493048836027c94181849";
+        return $"https://content.airhex.com/content/logos/airlines_{formatted}_200_200_s.png?api_key=0579a42ff493048836027c9418184119";
     }
 }
 
 <h1 class="text-center my-4">Airport Flight Schedule</h1>
+
+<form method="get" asp-action="Index" class="mb-4 text-center">
+    <label for="airportId" class="form-label me-2">Select Airport:</label>
+    <select name="airportId" id="airportId" class="form-select d-inline-block w-auto" onchange="this.form.submit()">
+        <option value="">-- All Airports --</option>
+        @foreach (var airport in Model.Airports)
+        {
+            <option value="@airport.Id" selected="@(Model.SelectedAirportId == airport.Id ? "selected" : null)">
+                @airport.Name
+            </option>
+        }
+    </select>
+    <noscript>
+        <button type="submit" class="btn btn-primary ms-2">Filter</button>
+    </noscript>
+</form>
 
 <div class="text-center mb-4">
     <a class="btn btn-primary" asp-action="Create">+ Add New Flight</a>

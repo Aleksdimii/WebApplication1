@@ -1,10 +1,7 @@
-﻿using System.Collections.Generic;
-
-namespace WebApplication1.Models
+﻿public class FlightIndexViewModel
 {
-    public class FlightIndexViewModel
-    {
-        public IEnumerable<Flight> Departures { get; set; }
-        public IEnumerable<Flight> Arrivals { get; set; }
-    }
+    public List<Flight> Departures { get; set; }
+    public List<Flight> Arrivals { get; set; }
+    public List<Airport> Airports { get; set; }
+    public int? SelectedAirportId { get; set; }
 }

@@ -28,29 +28,55 @@ namespace WebApplication1.Controllers
                 return "/images/default-plane.png";
 
             var formatted = airline.ToLower().Replace(" ", "-");
-            return $"https://content.airhex.com/content/logos/airlines_{formatted}_200_200_s.png?api_key=0579a42ff493048836027c9418184119";
+            return $"https://content.airhex.com/content/logos/airlines_{formatted}_200_200_s.png?api_key=0579a42ff493048836027c94181849";
         }
 
+        private async Task<(double lat, double lng)?> GetCoordinatesAsync(string locationName)
+        {
+            using var httpClient = new HttpClient();
+            var apiKey = "20d6ac341a904822972ac260da5ab7";
+            var url = $"https://api.opencagedata.com/geocode/v1/json?q={Uri.EscapeDataString(locationName)}&key={apiKey}&limit=1";
+
+            var response = await httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var content = await response.Content.ReadAsStringAsync();
+            dynamic json = Newtonsoft.Json.JsonConvert.DeserializeObject(content);
+            if (json.results.Count == 0) return null;
+
+            double lat = json.results[0].geometry.lat;
+            double lng = json.results[0].geometry.lng;
+            return (lat, lng);
+        }
+
+
         // GET: Flights
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? airportId)
         {
             var now = DateTime.Now;
 
-            var departures = await _context.Flights
-                .Include(f => f.Aircraft)
-                .Include(f => f.ArrivalAirport)
-                .Include(f => f.DepartureAirport)
-                .Where(f => f.DepartureTime >= now)
-                .OrderBy(f => f.DepartureTime)
-                .ToListAsync();
+            var airports = await _context.Airports.ToListAsync();
 
-            var arrivals = await _context.Flights
+            var departuresQuery = _context.Flights
                 .Include(f => f.Aircraft)
                 .Include(f => f.ArrivalAirport)
                 .Include(f => f.DepartureAirport)
-                .Where(f => f.ArrivalTime >= now)
-                .OrderBy(f => f.ArrivalTime)
-                .ToListAsync();
+                .Where(f => f.DepartureTime >= now);
+
+            var arrivalsQuery = _context.Flights
+                .Include(f => f.Aircraft)
+                .Include(f => f.ArrivalAirport)
+                .Include(f => f.DepartureAirport)
+                .Where(f => f.ArrivalTime >= now);
+
+            if (airportId.HasValue)
+            {
+                departuresQuery = departuresQuery.Where(f => f.DepartureAirportId == airportId.Value);
+                arrivalsQuery = arrivalsQuery.Where(f => f.ArrivalAirportId == airportId.Value);
+            }
+
+            var departures = await departuresQuery.OrderBy(f => f.DepartureTime).ToListAsync();
+            var arrivals = await arrivalsQuery.OrderBy(f => f.ArrivalTime).ToListAsync();
 
             foreach (var flight in departures.Concat(arrivals))
             {
@@ -60,7 +86,9 @@ namespace WebApplication1.Controllers
             var viewModel = new FlightIndexViewModel
             {
                 Departures = departures,
-                Arrivals = arrivals
+                Arrivals = arrivals,
+                Airports = airports,
+                SelectedAirportId = airportId
             };
 
             return View(viewModel);
@@ -72,31 +100,35 @@ namespace WebApplication1.Controllers
         // GET: Flights/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var flight = await _context.Flights
                 .Include(f => f.Aircraft)
                 .Include(f => f.ArrivalAirport)
                 .Include(f => f.DepartureAirport)
                 .FirstOrDefaultAsync(m => m.Id == id);
-            if (flight == null)
-            {
-                return NotFound();
-            }
+
+            if (flight == null) return NotFound();
+
+            var departureCoords = await GetCoordinatesAsync(flight.DepartureAirport?.Name);
+            var arrivalCoords = await GetCoordinatesAsync(flight.ArrivalAirport?.Name);
+
+            ViewBag.DepartureLat = departureCoords?.lat;
+            ViewBag.DepartureLng = departureCoords?.lng;
+            ViewBag.ArrivalLat = arrivalCoords?.lat;
+            ViewBag.ArrivalLng = arrivalCoords?.lng;
 
             return View(flight);
         }
 
 
-    // GET: Flights/Create
-    public IActionResult Create()
+
+        // GET: Flights/Create
+        public IActionResult Create()
         {
-            ViewData["AircraftId"] = new SelectList(_context.Aircrafts, "Id", "Id");
-            ViewData["ArrivalAirportId"] = new SelectList(_context.Airports, "Id", "Id");
-            ViewData["DepartureAirportId"] = new SelectList(_context.Airports, "Id", "Id");
+            ViewData["AircraftId"] = new SelectList(_context.Aircrafts, "Id", "Model");
+            ViewData["ArrivalAirportId"] = new SelectList(_context.Airports, "Id", "Name");
+            ViewData["DepartureAirportId"] = new SelectList(_context.Airports, "Id", "Name");
             return View();
         }
 
@@ -113,9 +145,9 @@ namespace WebApplication1.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["AircraftId"] = new SelectList(_context.Aircrafts, "Id", "Id", flight.AircraftId);
-            ViewData["ArrivalAirportId"] = new SelectList(_context.Airports, "Id", "Id", flight.ArrivalAirportId);
-            ViewData["DepartureAirportId"] = new SelectList(_context.Airports, "Id", "Id", flight.DepartureAirportId);
+            ViewData["AircraftId"] = new SelectList(_context.Aircrafts, "Id", "Model", flight.AircraftId);
+            ViewData["ArrivalAirportId"] = new SelectList(_context.Airports, "Id", "Name", flight.ArrivalAirportId);
+            ViewData["DepartureAirportId"] = new SelectList(_context.Airports, "Id", "Name", flight.DepartureAirportId);
             return View(flight);
         }
 
@@ -132,9 +164,9 @@ namespace WebApplication1.Controllers
             {
                 return NotFound();
             }
-            ViewData["AircraftId"] = new SelectList(_context.Aircrafts, "Id", "Id", flight.AircraftId);
-            ViewData["ArrivalAirportId"] = new SelectList(_context.Airports, "Id", "Id", flight.ArrivalAirportId);
-            ViewData["DepartureAirportId"] = new SelectList(_context.Airports, "Id", "Id", flight.DepartureAirportId);
+            ViewData["AircraftId"] = new SelectList(_context.Aircrafts, "Id", "Model", flight.AircraftId);
+            ViewData["ArrivalAirportId"] = new SelectList(_context.Airports, "Id", "Name", flight.ArrivalAirportId);
+            ViewData["DepartureAirportId"] = new SelectList(_context.Airports, "Id", "Name", flight.DepartureAirportId);
             return View(flight);
         }
 
@@ -170,9 +202,9 @@ namespace WebApplication1.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["AircraftId"] = new SelectList(_context.Aircrafts, "Id", "Id", flight.AircraftId);
-            ViewData["ArrivalAirportId"] = new SelectList(_context.Airports, "Id", "Id", flight.ArrivalAirportId);
-            ViewData["DepartureAirportId"] = new SelectList(_context.Airports, "Id", "Id", flight.DepartureAirportId);
+            ViewData["AircraftId"] = new SelectList(_context.Aircrafts, "Id", "Model", flight.AircraftId);
+            ViewData["ArrivalAirportId"] = new SelectList(_context.Airports, "Id", "Name", flight.ArrivalAirportId);
+            ViewData["DepartureAirportId"] = new SelectList(_context.Airports, "Id", "Name", flight.DepartureAirportId);
             return View(flight);
         }
 
